@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "Surface" ADD VALUE 'LITE_PORTAL';

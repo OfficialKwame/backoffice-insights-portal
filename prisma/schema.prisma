@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Surface {
+  LITE
+  LITE_PORTAL
+  APP
+  PORTAL
+}
+
+enum TestResult {
+  PASS
+  FAIL
+  BLOCKED
+  NOT_RUN
+}
+
+model TestDefinition {
+  id             String   @id @default(cuid())
+  surface        Surface
+  name           String
+  description    String?
+  steps          String?
+  expectedResult String?
+  sortOrder      Int
+  isActive       Boolean  @default(true)
+  results        TestResultEntry[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model TestRun {
+  id        String   @id @default(cuid())
+  surface   Surface
+  runDate   DateTime
+  notes     String?
+  results   TestResultEntry[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TestResultEntry {
+  id               String         @id @default(cuid())
+  result           TestResult     @default(NOT_RUN)
+  note             String?
+  issueReference   String?
+  testRunId        String
+  testDefinitionId String
+  testRun          TestRun        @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  testDefinition   TestDefinition @relation(fields: [testDefinitionId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([testRunId, testDefinitionId])
+}
+
+model CollectionsPeriod {
+  id              String   @id @default(cuid())
+  periodStart     DateTime
+  periodEnd       DateTime
+  daysCovered     Int      @default(0)
+  expectedDays    Int      @default(7)
+  isComplete      Boolean  @default(false)
+  computedSummary Json?
+  transactions    CollectionsTransaction[]
+  imports         CollectionsImport[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([periodStart, periodEnd])
+  @@index([periodStart])
+  @@index([periodEnd])
+}
+
+model CollectionsTransaction {
+  id            String            @id @default(cuid())
+  transactionId String            @unique
+  paymentDate   DateTime
+  rawData       Json
+  periodId      String
+  period        CollectionsPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([periodId])
+  @@index([paymentDate])
+}
+
+model CollectionsImport {
+  id              String             @id @default(cuid())
+  fileName        String
+  filePath        String
+  rowCount        Int
+  importedMinDate DateTime?
+  importedMaxDate DateTime?
+  periodId        String?
+  period          CollectionsPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  createdAt       DateTime           @default(now())
+
+  @@index([periodId])
+  @@index([createdAt])
+}
+
+
+enum DesignDriftSurface {
+  LITE
+  APP
+}
+
+enum DesignDriftSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DesignDriftStatus {
+  NEW
+  RAISED
+  IN_PROGRESS
+  FIXED
+  ACCEPTED
+}
+
+model DesignDriftReview {
+  id            String             @id @default(cuid())
+  surface       DesignDriftSurface
+  reviewDate    DateTime
+  areasReviewed Int                @default(0)
+  notes         String?
+  items         DesignDriftItem[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([reviewDate])
+  @@index([surface])
+}
+
+model DesignDriftItem {
+  id                  String              @id @default(cuid())
+  reviewId            String
+  review              DesignDriftReview   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  area                String
+  title               String
+  approvedReference   String?
+  liveObservation     String
+  approvedScreenshot  String?
+  liveScreenshot      String?
+
+  severity            DesignDriftSeverity @default(MEDIUM)
+  status              DesignDriftStatus   @default(NEW)
+
+  designReference     String?
+  raisedTo            String?
+  dateRaised          DateTime?
+
+  fixNotes            String?
+  dateFixed           DateTime?
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([reviewId])
+  @@index([status])
+  @@index([severity])
+}
+
+model ActivityLog {
+  id           String   @id @default(cuid())
+  activityDate DateTime @default(now())
+
+  category     String
+  action       String
+  description  String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([activityDate])
+  @@index([category])
+}
+
+model CollectionsInvoice {
+  id                String   @id @default(cuid())
+  invoiceId         String   @unique
+  businessId        String?
+  businessName      String?
+  source            String?
+  invoiceCreatedAt  DateTime
+  dueDate           DateTime?
+  totalAmount       Decimal  @db.Decimal(18, 2)
+  collectedAmount   Decimal  @db.Decimal(18, 2)
+  outstandingAmount Decimal  @db.Decimal(18, 2)
+  status            String?
+  lastPaymentDate   DateTime?
+  rawData           Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([invoiceCreatedAt])
+  @@index([businessId])
+  @@index([source])
+  @@index([status])
+}
+
+
+model QuickNote {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String?
+  isPinned  Boolean  @default(false)
+
+  width     Int?
+  height    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPinned])
+  @@index([updatedAt])
+}
+
+
+model BackOfficeAppUsageEvent {
+  id             String   @id @default(cuid())
+  sourceId       String? @unique
+  eventId        String?
+  sessionId      String?
+  customerPhoneNumber String?
+  eventName      String
+  eventTimestamp DateTime
+
+  operatingSystem String?
+  device          String?
+  appVersion      String?
+
+  rawData        Json
+
+  importedAt     DateTime @default(now())
+
+  @@index([eventTimestamp])
+  @@index([eventName])
+  @@index([sessionId])
+  @@index([customerPhoneNumber])
+  @@index([operatingSystem])
+  @@index([appVersion])
+}
+
+
+model UssdUsageEvent {
+  id                   String   @id @default(cuid())
+
+  // traceId:eventName:timestamp, so re-imports never double count
+  sourceId             String   @unique
+
+  // Shared by every step of one USSD session
+  traceId              String
+  eventName            String
+  flow                 String?
+  eventTimestamp       DateTime
+
+  // Keyed hash of the customer's number (the number itself is not stored)
+  customerHash         String?
+
+  businessId           String?
+  businessName         String?
+  sector               String?
+
+  channel              String?
+  network              String?
+
+  amount               Decimal? @db.Decimal(18, 2)
+  amountWithoutCharges Decimal? @db.Decimal(18, 2)
+  charges              Decimal? @db.Decimal(18, 2)
+
+  paymentCategory      String?
+  providerDescription  String?
+  sessionStatus        String?
+
+  importedAt           DateTime @default(now())
+
+  @@index([eventTimestamp])
+  @@index([traceId])
+  @@index([eventName])
+  @@index([businessId])
+  @@index([customerHash])
+}
+

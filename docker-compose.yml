@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: back-office-insights-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: insights
+      POSTGRES_PASSWORD: insights
+      POSTGRES_DB: insights
+    ports:
+      - "5432:5432"
+    volumes:
+      - insights_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  insights_postgres_data:
